@@ -214,7 +214,7 @@ public class PrismGenerator extends AbstractProcessor {
             out.format(             "import javax.lang.model.element.VariableElement;%n");
             out.format(             "import javax.lang.model.element.AnnotationValue;%n");
             out.format(             "import javax.lang.model.type.TypeMirror;%n");
-            out.format(             "import net.java.dev.hickory.prism.*;%n");
+            out.format(             "import net.java.dev.hickory.prism.internal.*;%n");
             // TODO generate javadocs here
             String annName = ((TypeElement)typeMirror.asElement()).getQualifiedName().toString();
             out.format(             "/** A Prism representing an {@code @%s} annotation. %n",annName);
