@@ -14,4 +14,4 @@
  * There should be no need to access the classes in this package directly.
  */
 
-package net.java.dev.hickory.testing.protocol.ramfilesystem;
+package net.java.dev.hickory.testing.internal.ramfilesystem;

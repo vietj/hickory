@@ -28,8 +28,8 @@
                 <pathelement location="${src.dir}"/>
                 <pathelement location="${build.generated.dir}"/>
             </sourcepath>
-            <packageset dir="${src.dir}" includes="*/**" excludes="**/internal" />
-            <packageset dir="${build.generated.dir}" includes="*/**" excludes="**/internal" />
+            <packageset dir="${src.dir}" includes="*/**" excludes="**/internal/**" />
+            <packageset dir="${build.generated.dir}" includes="*/**" excludes="**/internal/**" />
             <fileset dir="${src.dir}" includes="*.java"/>
         </javadoc>
         <zip zipfile="${dist.dir}/hickory-apidocs.zip" >

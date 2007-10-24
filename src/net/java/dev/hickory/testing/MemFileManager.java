@@ -23,7 +23,7 @@ import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
-import net.java.dev.hickory.testing.protocol.ramfilesystem.RAMFileSystemRegistry;
+import net.java.dev.hickory.testing.internal.ramfilesystem.RAMFileSystemRegistry;
 
 /*
  * A JavaFileManager that presents the contents of the cache as a file

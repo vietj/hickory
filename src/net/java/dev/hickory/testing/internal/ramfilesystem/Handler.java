@@ -6,7 +6,7 @@
  and open the template in the editor.
  */
 
-package net.java.dev.hickory.testing.protocol.ramfilesystem;
+package net.java.dev.hickory.testing.internal.ramfilesystem;
 
 import java.io.IOException;
 import java.net.URL;
