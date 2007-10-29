@@ -73,7 +73,6 @@ public class CompilationTest extends TestCase {
     }
     
     public void testGeneration() throws Exception {
-        System.out.format("------- starting faulty test ------%n");
         Compilation compilation = new Compilation();
         compilation.addSource("com.example.Foo")
                 .addLine("package com.example;")
@@ -87,7 +86,7 @@ public class CompilationTest extends TestCase {
         assertEquals(compilation.getDiagnostics().toString(),
                 0,compilation.getDiagnostics().size());
         String gen = compilation.getGeneratedSource("com.test.Generated");
-        System.out.print(gen);
+//        System.out.print(gen);
         assertTrue(gen, gen.contains("class") && gen.contains(" Generated"));
         Class<?> clazz = compilation.getOutputClass("com.test.Generated");
         assertNotNull(clazz);
@@ -105,5 +104,20 @@ public class CompilationTest extends TestCase {
         assertEquals(".java",JavaFileObject.Kind.SOURCE.extension);
         assertEquals(".html",JavaFileObject.Kind.HTML.extension);
         assertEquals("",JavaFileObject.Kind.OTHER.extension);
+    }
+    
+    public void testpackageInfo() {
+        Compilation compilation = new Compilation();
+        compilation.addSource("com.example.MyAnnotation")
+            .addLine("package com.example;")
+            .addLine("@interface MyAnnotation {}");
+        compilation.addSource("com.example.package-info")
+        .addLine("/** some javadoc comment */")
+        .addLine("@com.example.MyAnnotation")
+        .addLine("package com.example;");
+        compilation.doCompile(null);
+        assertEquals(compilation.getDiagnostics().toString(),
+                0,compilation.getDiagnostics().size());
+
     }
 }
