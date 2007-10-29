@@ -60,7 +60,7 @@ public class MethodVerifier {
     
     Class<?> target;
 
-    private DiagnosticCollector diagnostics = new DiagnosticCollector();
+    private DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
     
     /**
      * 
@@ -98,7 +98,7 @@ public class MethodVerifier {
             source.append("        throw new UnsupportedOperationException();\n    }\n");
         }
         source.append("}\n");
-        System.out.format("%s%n",source);
+//        System.out.format("%s%n",source);
             
         //  compile source and load it
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
