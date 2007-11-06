@@ -32,7 +32,7 @@ import javax.tools.StandardLocation;
  *
  */
 final class MemClassLoader extends ClassLoader {
-    
+    final private MemFileManager fileManager;
     final Map<LocationAndKind, Map<String, JavaFileObject>> ramFileSystem;
     final private static LocationAndKind CLASS_KEY = new LocationAndKind(StandardLocation.CLASS_OUTPUT,Kind.CLASS);
     final private static LocationAndKind SOURCE_KEY = new LocationAndKind(StandardLocation.CLASS_OUTPUT,Kind.SOURCE);
@@ -40,8 +40,9 @@ final class MemClassLoader extends ClassLoader {
 //     TODO need to access file manager for getresource type methods
 //             could use FileMagr .list maybe, may need to adjust
 //             name if .class file, convert path to fqn
-    MemClassLoader(Map<LocationAndKind, Map<String, JavaFileObject>> ramFileSystem) {
+    MemClassLoader(Map<LocationAndKind, Map<String, JavaFileObject>> ramFileSystem, MemFileManager fMgr) {
         this.ramFileSystem = ramFileSystem;
+        this.fileManager = fMgr;
     }
     
     @Override
@@ -114,5 +115,9 @@ final class MemClassLoader extends ClassLoader {
 //        System.out.format("jfo for %s is %s%n",name,jfo);
         if(jfo != null) retValue.add(jfo.toUri().toURL());
         return Collections.enumeration(retValue);
+    }
+
+    MemFileManager getFileManager() {
+        return fileManager;
     }
 }

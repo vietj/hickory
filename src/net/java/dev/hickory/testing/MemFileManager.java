@@ -70,7 +70,7 @@ class MemFileManager extends
         Map<String,JavaFileObject> classLoaderContent = new HashMap<String,JavaFileObject>();
         ramFileSystem.put(
                 new LocationAndKind(StandardLocation.CLASS_OUTPUT,Kind.CLASS),classLoaderContent);
-        ldr = new MemClassLoader(ramFileSystem);
+        ldr = new MemClassLoader(ramFileSystem,this);
         urlPrefix = RAMFileSystemRegistry.getInstance().getUrlPrefix(this);
 //        System.out.format("New RAMFilemanager, url prefix='%s', rfs=%s",urlPrefix, ramFileSystem);
     }
@@ -169,13 +169,11 @@ class MemFileManager extends
     @Override
     public String inferBinaryName(Location loc, JavaFileObject jfo) {
         String result;
-        
-        if (loc == StandardLocation.CLASS_PATH
-                && jfo instanceof MemJavaFileObject)
+        if (loc == StandardLocation.CLASS_PATH && jfo instanceof MemJavaFileObject) {
             result = jfo.getName();
-        else
+        } else {
             result = super.inferBinaryName(loc, jfo);
-        
+        }
         return result;
     }
     
@@ -187,6 +185,7 @@ class MemFileManager extends
         for(JavaFileObject f : super.list(loc, pkg, kinds, recurse)) {
             result.add(f);
         }
+//        System.out.format("Looking for files in package %s%n",pkg);
         // with this if statement - still can't find clases output in compilation when 
         // compiling a runtime test
         if(loc == StandardLocation.CLASS_PATH) {
@@ -207,7 +206,6 @@ class MemFileManager extends
                     String packageName = name.substring(0,name.lastIndexOf("."));
                     // when we had .class on end          packageName = packageName.substring(0,packageName.lastIndexOf("."));
 //                    System.out.format("Looking at name %s (pkg = %s)%n", name,packageName);
-//            if(recurse ? name.startsWith(packageName) : name.equals(packageName)) {
                     if(recurse ? packageName.startsWith(pkg) : packageName.equals(pkg)) {
                         JavaFileObject candidate = locatedFiles.get(name);
 //                        System.out.format("\tpkg name %s (from %s) matches arg %s for name=%s%n",

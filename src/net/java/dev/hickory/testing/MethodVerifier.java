@@ -101,8 +101,14 @@ public class MethodVerifier {
 //        System.out.format("%s%n",source);
             
         //  compile source and load it
+        
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        MemFileManager rfm = new MemFileManager(compiler.getStandardFileManager(diagnostics,null,null));
+        MemFileManager rfm;
+        if(target.getClassLoader() instanceof MemClassLoader) {
+            rfm = ((MemClassLoader)target.getClassLoader()).getFileManager();
+        } else {
+             rfm = new MemFileManager(compiler.getStandardFileManager(diagnostics,null,null));
+        }
         MemSourceFileObject jfo = new MemSourceFileObject("__Wrapper__");
         jfo.addLine(source.toString());
         List<JavaFileObject> jfos = new ArrayList<JavaFileObject>();
