@@ -68,11 +68,16 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
+import net.java.dev.hickory.prism.*;
 
 /**
  * An AnnotationProcessor for generating prisms. Do not use this class directly. 
  * @author Bruce
  */
+//@GeneratePrisms({ 
+//    @GeneratePrism(GeneratePrisms.class),
+//    @GeneratePrism(GeneratePrism.class)
+//})
 @SupportedAnnotationTypes({"net.java.dev.hickory.prism.GeneratePrism","net.java.dev.hickory.prism.GeneratePrisms"})
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
 public class PrismGenerator extends AbstractProcessor {
@@ -85,7 +90,6 @@ public class PrismGenerator extends AbstractProcessor {
 
     public boolean process(Set<? extends TypeElement> tes, RoundEnvironment renv) {
         if(renv.processingOver()) {
-            if(! generated.isEmpty())copyRequiredClassFiles();
             return true;
         }
         
@@ -94,19 +98,17 @@ public class PrismGenerator extends AbstractProcessor {
         
         for(Element e : renv.getElementsAnnotatedWith(a)) {
             GeneratePrismPrism ann = GeneratePrismPrism.getInstanceOn(e);
-            if(ann.isValid())generateIfNew(ann,e,Collections.<DeclaredType,String>emptyMap());
+            if(ann.isValid)generateIfNew(ann,e,Collections.<DeclaredType,String>emptyMap());
         }
         for(Element e : renv.getElementsAnnotatedWith(as)) {
-//                System.out.format("There is an %s on %s%n",a,e);
             GeneratePrismsPrism ann = GeneratePrismsPrism.getInstanceOn(e);
-            if(ann.isValid()) {
+            if(ann.isValid) {
                 Map<DeclaredType,String> otherPrisms = new HashMap<DeclaredType,String>();
                 for(GeneratePrismPrism inner : ann.value()) {
                     String name = getPrismName(inner);
                     // TODO to check that cast in next line is valid
                     otherPrisms.put((DeclaredType)inner.value(),getPrismName(inner));
                 }
-                System.out.format("Other prisms on %s = %s%n",e,otherPrisms);
                 for(GeneratePrismPrism inner : ann.value()) {
                     generateIfNew(inner,e,otherPrisms);
                 }
@@ -115,51 +117,6 @@ public class PrismGenerator extends AbstractProcessor {
         return false;
     }
     
-    private void copyRequiredClassFiles() {
-        // need to copy over all the support classes
-        Class[] supporting = new Class[] {
-            // net.java.dev.hickory.prism. classes
-            AbstractPrism.class
-        };
-        for(Class clazz : supporting) {
-            // one of these is an inner class - so need to build the flattened name
-            StringBuilder fname = new StringBuilder();
-            fname.append(clazz.getSimpleName()).append(".class");
-/*
-            Class clazz2 = clazz;
-            while( (clazz2 = clazz2.getEnclosingClass()) != null) {
-                fname.insert(0,'$');
-                fname.insert(0,clazz2.getSimpleName());
-            }
- */
-//            System.out.format("Copying %s for %s%n",fname,clazz);
-            byte[] buffer = new byte[10240];
-            try {
-                File simplef = new File(fname.toString());
-                JavaFileObject f = processingEnv.getFiler().
-                        createClassFile(clazz.getName());
-                System.out.format("Copying\t%s%nto\t%s%n",clazz.getResource(fname.toString()),f.toUri());
-                // sometimes we have already copied it, and are running the copy so its locked, don't copy over itself
-                if(! clazz.getResource(fname.toString()).toString().equals(f.toUri().toString())) {
-                    InputStream is = clazz.getResourceAsStream(fname.toString());
-                    OutputStream os = f.openOutputStream();
-                    int cnt;
-                    boolean done = false;
-                    while( (cnt = is.read(buffer)) != -1) {
-                        done = true;
-                        os.write(buffer,0,cnt);
-//                        System.out.format("\tCopied %d bytes for %s in package %s%n",cnt,simplef,clazz.getPackage().getName());
-                    }
-                    if(!done)throw new RuntimeException("no contents copied");
-                    os.close();
-                    is.close();
-                }
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
-            }
-        }
-    }
-
     private String getPrismName(GeneratePrismPrism ann) {
         String name = ann.name();
         if(name.equals("")) name = ((DeclaredType)ann.value()).asElement().getSimpleName() + "Prism";
@@ -177,7 +134,7 @@ public class PrismGenerator extends AbstractProcessor {
             if(generated.get(prismFqn).equals(ann.value())) return;
             processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
                     String.format("%s has already been generated for %s",prismFqn,generated.get(prismFqn)),
-                    e,ann.getMirror());
+                    e,ann.mirror);
             return;
         }
         generatePrism(name,packageName,(DeclaredType)ann.value(),ann.publicAccess() ? "public " : "",otherPrisms);
@@ -192,8 +149,6 @@ public class PrismGenerator extends AbstractProcessor {
     private void generatePrism(String name, String packageName, DeclaredType typeMirror, String access, Map<DeclaredType,String> otherPrisms) {
         inners.clear();
         String prismFqn = packageName.equals("") ? name : packageName + "." + name;
-        processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
-                String.format("Generating prism named %s for %s%n",prismFqn,typeMirror));
         PrintWriter out = null;
         try {
             // out = new PrintWriter(processingEnv.getFiler().createSourceFile(prismFqn));
@@ -215,85 +170,41 @@ public class PrismGenerator extends AbstractProcessor {
             out.format(             "import javax.lang.model.element.AnnotationValue;%n");
             out.format(             "import javax.lang.model.type.TypeMirror;%n");
             out.format(             "import net.java.dev.hickory.prism.internal.*;%n");
+            out.format(             "import java.util.HashMap;%n");
+            out.format(             "import javax.lang.model.element.ExecutableElement;%n");
+            out.format(             "import javax.lang.model.element.TypeElement;%n");
+            out.format(             "import javax.lang.model.util.ElementFilter;%n");
             // TODO generate javadocs here
             String annName = ((TypeElement)typeMirror.asElement()).getQualifiedName().toString();
             out.format(             "/** A Prism representing an {@code @%s} annotation. %n",annName);
-//            out.format(             "  * <p>The problem: When writing annotation processors the two ways to access%n");
-//            out.format(             "  * the annotations in the code are both awkward. {@code Element.getAnnotation()} can throw%n");
-//            out.format(             "  * Exceptions if the annotation being modelled is not semantically correct, and %n");
-//            out.format(             "  * the member methods on the returned Annotation can also throw Exceptions %n");
-//            out.format(             "  * if the annotation being modelled is not semantically correct. Moreover when calling%n");
-//            out.format(             "  * a member with a {@code Class} return type, you need to catch an exception to extract the DeclaredType.%n");
-//            out.format(             "  * <p>On the other hand, AnnotationMirror and AnnotationValue do a good job of%n");
-//            out.format(             "  * modelling both correct and incorrect annotations, but provide no simple mechanism %n");
-//            out.format(             "  * to determine whether it is correct or incorrect, and provide no convenient functionality%n");
-//            out.format(             "  * to access the member values in a simple type safe way.%n");
-//            out.format(             "  * <p>A Prism provides a solution to this problem by combining the advantages of the %n");
-//            out.format(             "  * pure reflective model of AnnotationMirror and the runtime (real) model provided%n");
-//            out.format(             "  * by {@code Element.getAnnotation()}.%n");
-//            out.format(             "  * <P>%n");
-//            out.format(             "  * A Mirror is where you look for a reflection whereas a Prism is %n");
-//            out.format(             "  * where you look for a partial reflection. A {@code %s} provides a %n",name);
-//            out.format(             "  * partially reflective and partially real view of an {@code @%s}%n",annName);
-//            out.format(             "  * <p>It has the same member methods as {@code @%s} %n",annName);
-//            out.format(             "  * except that the return types are mapped as follows...%n");
-//            out.format(             "  * <ul><li>primitive members return their equivalent wrapper class in the prism.%n");
-//            out.format(             "  * <li>Class members return a {@link javax.lang.model.type.DeclaredType DeclaredType} from the mirror API.%n");
-//            out.format(             "  * <li>enum members return a String representing the enum constant (because the constant%n");
-//            out.format(             "  * value in the mirror API mght not match those available in the runtime it cannot consistently return the appropriate enum).%n");
-//            out.format(             "  * <li>String members return Strings.%n");
-//            out.format(             "  * <li>Annotation members return a Prism of the annotation. Any such Prisms that%n");
-//            out.format(             "  * this Prism depends on are supplied as inner classes of this class.%n");
-//            out.format(             "  * <li>Array members return a {@code List<X>} where X is the appropriate prism mapping of the array %n");
-//            out.format(             "  * component as above.%n");
-//            out.format(             "  * </ul>%n");
-//            out.format(             "  * If a prism is generated from the mirror of a semantically incorrect annotation%n");
-//            out.format(             "  * then its {@code isValid()} method will return false, and the member with the %n");
-//            out.format(             "  * erroneous value will return null. If {@code isValid()} returns {@code true} then%n");
-//            out.format(             "  * no members will return null. AnnotatonProcessors using the prism should ignore%n");
-//            out.format(             "  * any prism instance that is invalid. It can be assumed that the processing tool will indicate%n");
-//            out.format(             "  * an error to the user in this case.%n");
-//            out.format(             "  * %n");
-//            out.format(             "  * <p>The {@code mirror} field provides access to the underlying%n");
-//            out.format(             "  * AnnotationMirror to assist with using the Messager.%n");
-//            out.format(             "  * <p>The {@code values} field contain a class with methodss which reflect the%n");
-//            out.format(             "  * AnnotationValues mirrorring the annotation(but without defaults).%n");
-//            out.format(             "  * This is useful when using Messager which can take an AnnotationValue as%n");
-//            out.format(             "  * a hint as to the message's position in the source code%n");
-//            out.format(             "  * %n");
-//            out.format(             "  * %n");
-//            out.format(             "  * %n");
             out.format(             "  */ %n");
-                    
-//            out.format(             "    @Prism(%s.class)%n",annName);
-            out.format(             "%sclass %s extends %s {%n",access,name,AbstractPrism.class.getName()); 
+            out.format(             "%sclass %s {%n",access,name); 
+            
             // SHOULD make public only if the anotation says so, package by default.
-            generateClassBody("",out, name, typeMirror,access,otherPrisms);
+            generateClassBody("",out, name, name, typeMirror,access,otherPrisms);
             
             
             // recurse for inner prisms!!
-            
             for(int n=0; n < inners.size();n++) {
                 DeclaredType next = inners.get(n);
                 String innerName = next.asElement().getSimpleName().toString();
                 String forName = ((TypeElement)typeMirror.asElement()).getQualifiedName().toString();
-//                out.format(         "        @Prism(%s.class)%n",forName);
-                out.format(         "    %sstatic class %s extends %s {%n",access,innerName,AbstractPrism.class.getName());
-                generateClassBody("    ",out, innerName,next,access,otherPrisms);
+                out.format(         "    %sstatic class %s {%n",access,innerName);
+                generateClassBody("    ",out, name, innerName,next,access,otherPrisms);
                 out.format(         "    }%n");
             }
-            
+            generateStaticMembers(out);
             out.format("}%n");
-        
         } finally {
             out.close();
         }
-        
+        processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
+                String.format("Generated prism %s for @%s",prismFqn,typeMirror));
     }
     
     List<DeclaredType> inners = new ArrayList<DeclaredType>();
 
-    private void generateClassBody(final String indent, final PrintWriter out, final String name, final DeclaredType typeMirror, String access, Map<DeclaredType,String> otherPrisms) {
+    private void generateClassBody(final String indent, final PrintWriter out, final String outerName, final String name, final DeclaredType typeMirror, String access, Map<DeclaredType,String> otherPrisms) {
         List<PrismWriter> writers = new ArrayList<PrismWriter>();
         for(ExecutableElement m : ElementFilter.methodsIn(typeMirror.asElement().getEnclosedElements())) {
             writers.add(getWriter(m,access,otherPrisms));
@@ -316,7 +227,7 @@ public class PrismGenerator extends AbstractProcessor {
             out.format(         "%s      * is returned.%n",indent);
             out.format(         "%s      */%n",indent);
             out.format(         "%s    %sstatic %s getInstanceOn(Element e) {%n",indent,access,name);
-            out.format(         "%s        AnnotationMirror m = AbstractPrism.getMirror(\"%s\",e);%n",
+            out.format(         "%s        AnnotationMirror m = getMirror(\"%s\",e);%n",
                         indent,((TypeElement)(typeMirror.asElement())).getQualifiedName());   
             out.format(         "%s        if(m == null) return null;%n",indent);
             out.format(         "%s        return getInstance(m);%n",indent);
@@ -329,14 +240,18 @@ public class PrismGenerator extends AbstractProcessor {
         out.format(             "%s    }%n%n",indent);
         // write constructor
         out.format(             "%s    private %s(AnnotationMirror mirror) {%n",indent,name);
-        out.format(             "%s        super(mirror);%n",indent);
+        out.print(
+                                "        for(ExecutableElement key : mirror.getElementValues().keySet()) {\n" +
+                                "            memberValues.put(key.getSimpleName().toString(),mirror.getElementValues().get(key));\n" +
+                                "        }\n" +
+                                "        for(ExecutableElement member : ElementFilter.methodsIn(mirror.getAnnotationType().asElement().getEnclosedElements())) {\n" +
+                                "            defaults.put(member.getSimpleName().toString(),member.getDefaultValue());\n" +
+                                "        }\n" 
+                );
         for(PrismWriter w : writers) w.writeInitializer(indent,out);
-        out.format(             "%s        this.values = new Values(super.values);%n",indent);
+        out.format(             "%s        this.values = new Values(memberValues);%n",indent);
         out.format(             "%s        this.mirror = mirror;%n",indent);
         out.format(             "%s        this.isValid = valid;%n",indent);
-//        for(PrismWriter w : writers) {
-//            out.format(         "%s        _values.%s = super.values.get(\"%s\");%n",indent,w.name,w.name);
-//        }
         out.format(             "%s    }%n%n",indent);
         
         // write methods
@@ -351,8 +266,6 @@ public class PrismGenerator extends AbstractProcessor {
         out.format(             "%s      * prism that is not valid.%n",indent);
         out.format(             "%s      */%n",indent);
         out.format(             "%s    %sfinal boolean isValid;%n",indent,access);
-//        out.format(             "%s        return valid;%n",indent);
-//        out.format(             "%s    }%n",indent);
         out.format(             "%s    %n",indent);
         out.format(             "%s    /**%n",indent);
         out.format(             "%s      * The underlying AnnotationMirror of the annotation%n",indent);
@@ -362,7 +275,6 @@ public class PrismGenerator extends AbstractProcessor {
         out.format(             "%s    %sfinal AnnotationMirror mirror;%n",indent,access);
         
         // write Value class
-
         out.format(             "%s    /**%n",indent);
         out.format(             "%s      * A class whose members corespond to those of %s%n",indent,annName);
         out.format(             "%s      * but which each return the AnnotationValue corresponding to%n",indent);
@@ -381,11 +293,11 @@ public class PrismGenerator extends AbstractProcessor {
             out.format(         "%s       %sAnnotationValue %s(){ return values.get(\"%s\");}%n",indent,access,w.name,w.name);
         }
         out.format(             "%s    }%n",indent);
+        generateFixedClassContent(indent,out, outerName);
     }
 
     
     private class PrismWriter {
-//        PrintWriter out;
         String name;
         String mirrorType;
         String prismType;
@@ -463,9 +375,6 @@ public class PrismGenerator extends AbstractProcessor {
                 out.format(         "%s      */ %n",indent);
                 out.format(         "%s    %s%s %s() { return _%s; }%n%n",indent,access,prismType,name,name);
             }
-//            out.format(             "%s    %s AnnotationValue get%sAsValue() {%n",indent,access,name);
-//            out.format(             "%s        return values.get(\"%s\");%n",indent,name);
-//            out.format(             "%s    }%n",indent);
         }
     }
     
@@ -505,7 +414,6 @@ public class PrismGenerator extends AbstractProcessor {
             } else if (types.isSubtype(type,elements.getTypeElement("java.lang.annotation.Annotation").asType())) {
                 result.setMirrorType("AnnotationMirror");
                 DeclaredType annType = (DeclaredType)type;
-//                System.out.format("XXXXXX element is another annotation%n");
                 String prismName = null;
                 for(DeclaredType other : otherPrisms.keySet()) {
                     if(types.isSameType(other,annType)) {
@@ -514,12 +422,9 @@ public class PrismGenerator extends AbstractProcessor {
                     }
                 }
                 if(prismName != null) {
-//                    System.out.format("element has sibling prism%n");
-//                    String prismName = otherPrisms.get(annType);
                     result.setPrismType(prismName);
                     result.setM2pFormat(prismName + ".getInstance(%s)");
                 } else {
-//                    System.out.format("generate as inner%n");
                     // generate its prism as inner class
                     String prismType = annType.asElement().getSimpleName().toString();
                     result.setPrismType(prismType);
@@ -532,5 +437,67 @@ public class PrismGenerator extends AbstractProcessor {
             }
         }
         return result;        
+    }
+    private void generateStaticMembers(PrintWriter out) {
+        out.print(
+            "    private static AnnotationMirror getMirror(String fqn, Element target) {\n" +
+            "        for (AnnotationMirror m :target.getAnnotationMirrors()) {\n" +
+            "            CharSequence mfqn = ((TypeElement)m.getAnnotationType().asElement()).getQualifiedName();\n" +
+            "            if(fqn.contentEquals(mfqn)) return m;\n" +
+            "        }\n" +
+            "        return null;\n" +
+            "    }\n" +
+            "    private static <T> T getValue(Map<String,AnnotationValue> memberValues, Map<String,AnnotationValue> defaults, String name, Class<T> clazz) {\n" +
+            "        AnnotationValue av = memberValues.get(name);\n" +
+            "        if(av == null) av = defaults.get(name);\n" +
+            "        if(av == null) {\n" +
+            "            return null;\n" +
+            "        }\n" +
+            "        if(clazz.isInstance(av.getValue())) return clazz.cast(av.getValue());\n" +
+            "        return null;\n" +
+            "    }\n" + 
+            "    private static <T> List<T> getArrayValues(Map<String,AnnotationValue> memberValues, Map<String,AnnotationValue> defaults, String name, final Class<T> clazz) {\n" +
+            "        AnnotationValue av = memberValues.get(name);\n" +
+            "        if(av == null) av = defaults.get(name);\n" +
+            "        if(av == null) {\n" +
+            "            return null;\n" +
+            "        }\n" +
+            "        if(av.getValue() instanceof List) {\n" +
+            "            List<T> result = new ArrayList<T>();\n" +
+            "            for(AnnotationValue v : getValueAsList(av)) {\n" +
+            "                if(clazz.isInstance(v.getValue())) {\n" +
+            "                    result.add(clazz.cast(v.getValue()));\n" +
+            "                } else{\n" +
+            "                    return null;\n" +
+            "                }\n" +
+            "            }\n" +
+            "            return result;\n" +
+            "        } else {\n" +
+            "            return null;\n" +
+            "        }\n" +
+            "    }\n" +
+            "    @SuppressWarnings(\"unchecked\")\n" +
+            "    private static List<AnnotationValue> getValueAsList(AnnotationValue av) {\n" +
+            "        return (List<AnnotationValue>)av.getValue();\n" +
+            "    }\n"
+        );
+    }
+
+    private void generateFixedClassContent(String indent, PrintWriter out, String outerName) {
+        out.format("%s    private Map<String,AnnotationValue> defaults = new HashMap<String,AnnotationValue>(10);%n",indent);
+        out.format("%s    private Map<String,AnnotationValue> memberValues = new HashMap<String,AnnotationValue>(10);%n",indent);
+        out.format("%s    private boolean valid = true;%n",indent);
+        out.format("%n");
+        out.format("%s    private <T> T getValue(String name, Class<T> clazz) {%n",indent);
+        out.format("%s        T result = %s.getValue(memberValues,defaults,name,clazz);%n",indent,outerName);
+        out.format("%s        if(result == null) valid = false;%n",indent);
+        out.format("%s        return result;%n",indent);
+        out.format("%s    } %n",indent);
+        out.format("%n");
+        out.format("%s    private <T> List<T> getArrayValues(String name, final Class<T> clazz) {%n",indent);
+        out.format("%s        List<T> result = %s.getArrayValues(memberValues,defaults,name,clazz);%n",indent,outerName);
+        out.format("%s        if(result == null) valid = false;%n",indent);
+        out.format("%s        return result;%n",indent);
+        out.format("%s    }%n",indent);
     }
 }

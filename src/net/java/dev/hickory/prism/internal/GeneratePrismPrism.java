@@ -28,72 +28,180 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/*
-  GeneratePrismPrism.java
- 
- Created on 30 June 2006, 14:55
- */
-
 package net.java.dev.hickory.prism.internal;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.type.TypeMirror;
+import net.java.dev.hickory.prism.internal.*;
+import java.util.HashMap;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.util.ElementFilter;
+/** A Prism representing an {@code @net.java.dev.hickory.prism.GeneratePrism} annotation. 
+  */ 
+class GeneratePrismPrism {
+    /** store prism value of value */
+    private TypeMirror _value;
 
-/**
- * This is a Prism for GeneratePrism. It was hand coded because I needed to use it
- * before I had the processsor written to generate it automatically. It also
- * is a simple example of a Prism. See the source for PrismGenerator to see how a
- * prism is used.
- @author Bruce
- */
-class GeneratePrismPrism extends AbstractPrism {
-    
-    private TypeMirror value;
-    private String name;
-    private Boolean publicAccess;
-    private Values _values = new Values();
+    /** store prism value of name */
+    private String _name;
 
-    /** Creates a new instance of GeneratePrismPrism */
-    private GeneratePrismPrism(AnnotationMirror mirror) {
-        super(mirror);
-        value = getValue("value",TypeMirror.class);
-        name = getValue("name",String.class);
-        publicAccess = getValue("publicAccess",Boolean.class);
-        _values.name = super.values.get("name");
-        _values.value = super.values.get("value");
-    }
-    
-    public static GeneratePrismPrism getInstance(AnnotationMirror mirror) {
-        return new GeneratePrismPrism(mirror);
-    }
-    
-    public static GeneratePrismPrism getInstanceOn(Element e) {
-        AnnotationMirror m = AbstractPrism.getMirror("net.java.dev.hickory.prism.GeneratePrism",e);
+    /** store prism value of publicAccess */
+    private Boolean _publicAccess;
+
+    /**
+      * An instance of the Values inner class whose
+      * methods return the AnnotationValues used to build this prism. 
+      * Primarily intended to support using Messager.
+      */
+    final Values values;
+    /** Return a prism representing the {@code @net.java.dev.hickory.prism.GeneratePrism} annotation on 'e'. 
+      * similar to {@code e.getAnnotation(net.java.dev.hickory.prism.GeneratePrism.class)} except that 
+      * an instance of this class rather than an instance of {@code net.java.dev.hickory.prism.GeneratePrism}
+      * is returned.
+      */
+    static GeneratePrismPrism getInstanceOn(Element e) {
+        AnnotationMirror m = getMirror("net.java.dev.hickory.prism.GeneratePrism",e);
         if(m == null) return null;
         return getInstance(m);
+   }
+
+    /** Return a prism of the {@code @net.java.dev.hickory.prism.GeneratePrism} annotation whose mirror is mirror. 
+      */
+    static GeneratePrismPrism getInstance(AnnotationMirror mirror) {
+        return new GeneratePrismPrism(mirror);
     }
 
-    TypeMirror value() { return value; }
-    String name() { return name; }
-    Boolean publicAccess() { return publicAccess; }
+    private GeneratePrismPrism(AnnotationMirror mirror) {
+        for(ExecutableElement key : mirror.getElementValues().keySet()) {
+            memberValues.put(key.getSimpleName().toString(),mirror.getElementValues().get(key));
+        }
+        for(ExecutableElement member : ElementFilter.methodsIn(mirror.getAnnotationType().asElement().getEnclosedElements())) {
+            defaults.put(member.getSimpleName().toString(),member.getDefaultValue());
+        }
+        _value = getValue("value",TypeMirror.class);
+        _name = getValue("name",String.class);
+        _publicAccess = getValue("publicAccess",Boolean.class);
+        this.values = new Values(memberValues);
+        this.mirror = mirror;
+        this.isValid = valid;
+    }
 
+    /** 
+      * Returns a TypeMirror representing the value of the {@code java.lang.Class<? extends java.lang.annotation.Annotation> value()} member of the Annotation.
+      * @see net.java.dev.hickory.prism.GeneratePrism#value()
+      */ 
+    TypeMirror value() { return _value; }
+
+    /** 
+      * Returns a String representing the value of the {@code java.lang.String name()} member of the Annotation.
+      * @see net.java.dev.hickory.prism.GeneratePrism#name()
+      */ 
+    String name() { return _name; }
+
+    /** 
+      * Returns a Boolean representing the value of the {@code boolean publicAccess()} member of the Annotation.
+      * @see net.java.dev.hickory.prism.GeneratePrism#publicAccess()
+      */ 
+    Boolean publicAccess() { return _publicAccess; }
+
+    /**
+      * Determine whether the underlying AnnotationMirror has no errors.
+      * True if the underlying AnnotationMirror has no errors.
+      * When true is returned, none of the methods will return null.
+      * When false is returned, a least one member will either return null, or another
+      * prism that is not valid.
+      */
+    final boolean isValid;
     
-    public class Values {
-        AnnotationValue value;
-        AnnotationValue name;
-        AnnotationValue publicAccess;
+    /**
+      * The underlying AnnotationMirror of the annotation
+      * represented by this Prism. 
+      * Primarily intended to support using Messager.
+      */
+    final AnnotationMirror mirror;
+    /**
+      * A class whose members corespond to those of net.java.dev.hickory.prism.GeneratePrism
+      * but which each return the AnnotationValue corresponding to
+      * that member in the model of the annotations. Returns null for
+      * defaulted members. Used for Messager, so default values are not useful.
+      */
+    static class Values {
+       private Map<String,AnnotationValue> values;
+       private Values(Map<String,AnnotationValue> values) {
+           this.values = values;
+       }    
+       /** Return the AnnotationValue corresponding to the value() 
+         * member of the annotation, or null when the default value is implied.
+         */
+       AnnotationValue value(){ return values.get("value");}
+       /** Return the AnnotationValue corresponding to the name() 
+         * member of the annotation, or null when the default value is implied.
+         */
+       AnnotationValue name(){ return values.get("name");}
+       /** Return the AnnotationValue corresponding to the publicAccess() 
+         * member of the annotation, or null when the default value is implied.
+         */
+       AnnotationValue publicAccess(){ return values.get("publicAccess");}
     }
-    
-    public Values getValues() {
-        return _values;
+    private Map<String,AnnotationValue> defaults = new HashMap<String,AnnotationValue>(10);
+    private Map<String,AnnotationValue> memberValues = new HashMap<String,AnnotationValue>(10);
+    private boolean valid = true;
+
+    private <T> T getValue(String name, Class<T> clazz) {
+        T result = GeneratePrismPrism.getValue(memberValues,defaults,name,clazz);
+        if(result == null) valid = false;
+        return result;
+    } 
+
+    private <T> List<T> getArrayValues(String name, final Class<T> clazz) {
+        List<T> result = GeneratePrismPrism.getArrayValues(memberValues,defaults,name,clazz);
+        if(result == null) valid = false;
+        return result;
     }
-    
-    public boolean isValid(){  return super.valid; }
-    
-    public AnnotationMirror getMirror() { return super.mirror; }
+    private static AnnotationMirror getMirror(String fqn, Element target) {
+        for (AnnotationMirror m :target.getAnnotationMirrors()) {
+            CharSequence mfqn = ((TypeElement)m.getAnnotationType().asElement()).getQualifiedName();
+            if(fqn.contentEquals(mfqn)) return m;
+        }
+        return null;
+    }
+    private static <T> T getValue(Map<String,AnnotationValue> memberValues, Map<String,AnnotationValue> defaults, String name, Class<T> clazz) {
+        AnnotationValue av = memberValues.get(name);
+        if(av == null) av = defaults.get(name);
+        if(av == null) {
+            return null;
+        }
+        if(clazz.isInstance(av.getValue())) return clazz.cast(av.getValue());
+        return null;
+    }
+    private static <T> List<T> getArrayValues(Map<String,AnnotationValue> memberValues, Map<String,AnnotationValue> defaults, String name, final Class<T> clazz) {
+        AnnotationValue av = memberValues.get(name);
+        if(av == null) av = defaults.get(name);
+        if(av == null) {
+            return null;
+        }
+        if(av.getValue() instanceof List) {
+            List<T> result = new ArrayList<T>();
+            for(AnnotationValue v : getValueAsList(av)) {
+                if(clazz.isInstance(v.getValue())) {
+                    result.add(clazz.cast(v.getValue()));
+                } else{
+                    return null;
+                }
+            }
+            return result;
+        } else {
+            return null;
+        }
+    }
+    @SuppressWarnings("unchecked")
+    private static List<AnnotationValue> getValueAsList(AnnotationValue av) {
+        return (List<AnnotationValue>)av.getValue();
+    }
 }
