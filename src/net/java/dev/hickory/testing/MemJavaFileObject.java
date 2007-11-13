@@ -31,10 +31,14 @@ class MemJavaFileObject extends SimpleJavaFileObject {
     
     MemJavaFileObject(String urlPrefix, String name, Kind kind) {
 //        super(URI.create("string:///" + name.replace('.','/') + kind.extension), kind);
-        super(URI.create(urlPrefix + name + kind.extension), kind);
+        super(URI.create(urlPrefix + encode(name) + kind.extension), kind);
         this.name = name;
 //        System.out.format("Creating MemJavaFileObject %s (%s)",name,kind);
     }
+    
+    private static String encode(String name) {
+        return name.replace("%","%37").replace(" ","%20");
+    } 
     
     @Override
     public CharSequence getCharContent(boolean ignoreEncodingErrors)

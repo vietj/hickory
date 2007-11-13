@@ -34,7 +34,8 @@ public class Handler extends URLStreamHandler {
         
 //        System.out.format("URL '%s' path is '%s'%n",u,path);
         // next line probably should be ForInput not ForOutput - just trying Output to see if it works
-        FileObject fo = jfm.getFileForOutput(StandardLocation.CLASS_OUTPUT,"",path.substring(1),null);
+        String name = path.substring(1).replace("%20"," ").replace("%37","%");
+        FileObject fo = jfm.getFileForOutput(StandardLocation.CLASS_OUTPUT,"",name,null);
         if(fo == null) throw new IOException("FileObject for '" + u + "' not found");
 //        System.out.format("FileObject to read is %s%n",fo);
         return new Connection(u,fo);
