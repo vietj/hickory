@@ -65,7 +65,7 @@ public class ServiceProviderProcessor extends AbstractProcessor {
         if(roundEnv.processingOver() && ! roundEnv.errorRaised()) {
             generate();
         } else if(! roundEnv.errorRaised()) {
-            StateSaver<State> stateSaver = StateSaver.getInstance(this,processingEnv);
+            StateSaver<State> stateSaver = StateSaver.getInstance(this, State.class, processingEnv);
             stateSaver.startRound(roundEnv);
             TypeElement serviceProviderElement = processingEnv.getElementUtils().getTypeElement(ServiceProvider.class.getCanonicalName());
             for(Element target : roundEnv.getElementsAnnotatedWith(serviceProviderElement)) {
@@ -84,7 +84,7 @@ public class ServiceProviderProcessor extends AbstractProcessor {
     }
 
     private void generate() {
-        StateSaver<State> stateSaver = StateSaver.getInstance(this,processingEnv);
+        StateSaver<State> stateSaver = StateSaver.getInstance(this, State.class, processingEnv);
         Comparator<State> byService = new Comparator<State>() {
             public int compare(ServiceProviderProcessor.State o1, ServiceProviderProcessor.State o2) {
                 return o1.service.compareTo(o2.service);
@@ -146,17 +146,19 @@ public class StateSaver<T extends Serializable> {
     /** Return an instance for use by the specified processor.
      * @param processor The processor that needs this instance. Is used to
      * determine the name of the file in which state is persisted. Consequently each
-     * Processor can have only one StateSaver 
-     * @param penv The cuurent ProcessingEnvironment from which teh Filer can be obtained.
+     * Processor can have only one StateSaver
+     * @param type The Class of the data being managed by this StateSaver 
+     * @param penv The current ProcessingEnvironment from which teh Filer can be obtained.
+     * @param <K> The type of the data being managed by this StateSaver
      * */ 
-    public static <K extends Serializable> StateSaver<K> getInstance(Processor processor, ProcessingEnvironment penv) {
+    public static <K extends Serializable> StateSaver<K> getInstance(Processor processor, Class<K> type, ProcessingEnvironment penv) {
         // get from cache or make new and read serialized data from previous runs
         if(penv != StateSaver.penv) {
             // new run - save the filer and penv, and reset the cache
             StateSaver.penv = penv;
             cache.clear();
         }
-        String key = processor.getClass().getName();
+        String key = processor.getClass().getName() + " " + type.getClass().getName();
         if(cache.containsKey(key)) {
             return (StateSaver<K>) cache.get(key);
         } else {

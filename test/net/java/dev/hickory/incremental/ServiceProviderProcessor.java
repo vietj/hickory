@@ -39,7 +39,7 @@ public class ServiceProviderProcessor extends AbstractProcessor {
         if(roundEnv.processingOver() && ! roundEnv.errorRaised()) {
             generate();
         } else if(! roundEnv.errorRaised()) {
-            StateSaver<State> stateSaver = StateSaver.getInstance(this,processingEnv);
+            StateSaver<State> stateSaver = StateSaver.getInstance(this, State.class, processingEnv);
             stateSaver.startRound(roundEnv);
             TypeElement serviceProviderElement = processingEnv.getElementUtils().getTypeElement(ServiceProvider.class.getCanonicalName());
             for(Element target : roundEnv.getElementsAnnotatedWith(serviceProviderElement)) {
@@ -58,7 +58,7 @@ public class ServiceProviderProcessor extends AbstractProcessor {
     }
 
     private void generate() {
-        StateSaver<State> stateSaver = StateSaver.getInstance(this,processingEnv);
+        StateSaver<State> stateSaver = StateSaver.getInstance(this, State.class, processingEnv);
         Comparator<State> byService = new Comparator<State>() {
             public int compare(ServiceProviderProcessor.State o1, ServiceProviderProcessor.State o2) {
                 return o1.service.compareTo(o2.service);
