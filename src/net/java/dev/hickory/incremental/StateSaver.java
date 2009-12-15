@@ -158,7 +158,7 @@ public class StateSaver<T extends Serializable> {
             StateSaver.penv = penv;
             cache.clear();
         }
-        String key = processor.getClass().getName() + " " + type.getClass().getName();
+        String key = processor.getClass().getName() + "-" + type.getClass().getName();
         if(cache.containsKey(key)) {
             return (StateSaver<K>) cache.get(key);
         } else {
