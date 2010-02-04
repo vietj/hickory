@@ -122,8 +122,9 @@ public class Compilation  {
      * from the processors, and compiler or processor failure messages).
      * @param options Any other options for the compilation. see the output from javac command.
      * @throws IllegalStateException if {@code doCompile()} has already been called.
+     *@return true if the compilation was successful (the value returned from CompilationTask.call())
      */
-    public void doCompile(Writer out, String... options) {
+    public boolean doCompile(Writer out, String... options) {
         if(done) throw new IllegalStateException("cannot call after doCompilation()");
         List<String> optionList = new ArrayList<String>();
         optionList.addAll(Arrays.asList("-classpath",System.getProperty("java.class.path")));
@@ -132,6 +133,7 @@ public class Compilation  {
         if(processors != null) task.setProcessors(processors);
         success = task.call();
         done = true;
+        return success;
     }
     
     /** Return the list of diagnostics generated during the compilation. 
