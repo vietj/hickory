@@ -4,10 +4,14 @@ import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
+import javax.tools.FileObject;
 import javax.tools.JavaCompiler;
+import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
@@ -171,6 +175,34 @@ public class Compilation  {
             throw new RuntimeException(ex);
         }
     }
+
+    /**
+     * Access the memory file system.
+     * If {@link #doCompile(java.io.Writer, java.lang.String[]) } has not yet been called a FileObject will be returned whether
+     * or not it already exists. This is so that the file system can be populated with files prior to compiling (but use {@link #addSource(java.lang.String) }
+     * for populating source files).
+     * If {@link #doCompile(java.io.Writer, java.lang.String[]) } has already been called on this, and the file does not
+     * exist in the ram file system, then null will be returned.
+     * @see JavaFileManager#getFileForInput(javax.tools.JavaFileManager.Location, java.lang.String, java.lang.String)
+     * @param loc The location to access.
+     * @param packageName a package name.
+     * @param relativeName a relative name.
+     * @return the FileObject or null for a non existent file after compiling.
+     */
+
+    public FileObject getFile(JavaFileManager.Location loc, String packageName, String relativeName)  {
+        if((!done) || jfm.fileExists(loc, packageName, relativeName)) {
+            try {
+                return jfm.getFileForOutput(loc, packageName, relativeName, null);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        } else {
+            // compilation done and file doesn't exist in ram file system
+            return null;
+        }
+    }
+
     
     /** Return a runtime test that can be 
      * executed against the compiled code. The RuntimeTest may be executed multiple times

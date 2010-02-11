@@ -104,7 +104,18 @@ class MemFileManager extends
         return jfo;
     }
 
-    public FileObject getFileForInput(JavaFileManager.Location location, String packageName, String relativeName) throws IOException {
+    public boolean fileExists(JavaFileManager.Location location, String packageName, String relativeName) {
+        String name = null;
+        if("".equals(packageName)) {
+            name = relativeName;
+        } else {
+            name = packageName.replace('.','/') + "/" + relativeName;
+        }
+        LocationAndKind key = new LocationAndKind(location,JavaFileObject.Kind.OTHER);
+        return ramFileSystem.containsKey(key) && ramFileSystem.get(key).containsKey(name);
+    }
+
+        public FileObject getFileForInput(JavaFileManager.Location location, String packageName, String relativeName) throws IOException {
         throw new UnsupportedOperationException();
 //        LocationAndKind key = new LocationAndKind(location,JavaFileObject.Kind.OTHER);
 //        String name = packageName.replace('.','/') + "/" + relativeName;

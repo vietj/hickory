@@ -7,23 +7,23 @@
 
 package net.java.dev.hickory.testing;
 
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.util.Set;
+import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.TypeElement;
 import junit.framework.*;
-import java.io.Writer;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import javax.tools.Diagnostic;
-import javax.tools.DiagnosticCollector;
-import javax.tools.JavaCompiler;
+import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.lang.model.util.Elements;
+import javax.tools.FileObject;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
-import javax.tools.ToolProvider;
 
 /**
  *
@@ -54,6 +54,39 @@ public class CompilationTest extends TestCase {
         Method answerMethod = fooClass.getDeclaredMethod("answer");
         Object answer = answerMethod.invoke(null);
         assertEquals(Integer.valueOf(42),answer);
+    }
+
+    public void testFileSystemAccessSourceOutput() throws Exception {
+        fileSystemAccessTest(StandardLocation.SOURCE_OUTPUT);
+    }
+    
+    public void testFileSystemAccessClassOutput() throws Exception {
+        fileSystemAccessTest(StandardLocation.CLASS_OUTPUT);
+    }
+
+    public void testFileSystemAccessClassPath() throws Exception {
+        fileSystemAccessTest(StandardLocation.CLASS_PATH);
+    }
+
+    public void testFileSystemAccessProcessorPath() throws Exception {
+        fileSystemAccessTest(StandardLocation.ANNOTATION_PROCESSOR_PATH);
+    }
+
+    private void fileSystemAccessTest(JavaFileManager.Location loc) throws Exception {
+        Compilation compilation = new Compilation();
+        compilation.addSource("com.example.Foo")
+                .addLine("package com.example;")
+                .addLine("public class Foo {}");
+        FileObject fo = compilation.getFile(loc, "", "resources/test");
+        final OutputStream out = fo.openOutputStream();
+        out.write(1);
+        out.close();
+        compilation.doCompile(new PrintWriter(System.out));
+        FileObject fodash = compilation.getFile(loc, "", "resources/test");
+        final InputStream in = fodash.openInputStream();
+        assertEquals(1,in.read());
+        in.close();
+        assertNull(compilation.getFile(loc, "", "resources/nonexistent"));
     }
     
     public void testBadSourceFile() {
@@ -119,5 +152,53 @@ public class CompilationTest extends TestCase {
         assertEquals(compilation.getDiagnostics().toString(),
                 0,compilation.getDiagnostics().size());
 
+    }
+
+    public void testGeneratedElementsVisibleInNextCompile() {
+        Compilation compilation = new Compilation();
+        compilation.addSource("com.example.Foo")
+                .addLine("package com.example;")
+                .addLine(" public class Foo {}");
+        ElementFinderProcessor processor = new ElementFinderProcessor();
+        compilation.useProcessor(processor);
+        compilation.doCompile(null);
+        assertTrue(processor.processDone);
+        assertTrue(processor.elements.get("com.example.Foo"));
+        assertFalse(processor.elements.get("com.example.Bar"));
+
+        // now second compile "com.example.Bar" and see if com.example.Foo is visible
+        compilation = new Compilation(compilation);
+        compilation.addSource("com.example.Bar")
+                .addLine("package com.example;")
+                .addLine("public class Bar {}");
+        processor = new ElementFinderProcessor();
+        compilation.useProcessor(processor);
+        compilation.doCompile(null);
+        assertTrue(processor.processDone);
+        assertTrue(processor.elements.get("com.example.Foo"));
+        assertTrue(processor.elements.get("com.example.Bar"));
+    }
+
+    @SupportedAnnotationTypes("*")
+    static class ElementFinderProcessor extends AbstractProcessor {
+        private Map<String,Boolean> elements = new HashMap<String, Boolean>();
+        boolean processDone;
+
+        public ElementFinderProcessor() {
+            elements.put("com.example.Foo", false);
+            elements.put("com.example.Bar", false);
+        }
+
+        @Override
+        public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+            processDone = true;
+            Elements util = processingEnv.getElementUtils();
+            for(String name : elements.keySet()) {
+                if(util.getTypeElement(name) != null) {
+                    elements.put(name, true);
+                }
+            }
+            return true;
+        }
     }
 }
